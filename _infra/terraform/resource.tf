@@ -205,14 +205,36 @@ resource "aws_instance" "app" {
   iam_instance_profile = aws_iam_instance_profile.gproxy.name
 
   user_data = <<-EOF
-    #!/bin/bash
-    set -eux
+      #!/bin/bash
+      set -eux
 
-    mkdir -p /opt/gproxy
+      mkdir -p /opt/gproxy
 
-    systemctl enable amazon-ssm-agent || true
-    systemctl restart amazon-ssm-agent || true
-  EOF
+      curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+      unzip -q /tmp/awscliv2.zip -d /tmp
+      /tmp/aws/install
+
+      cat > /etc/systemd/system/gproxy.service <<'UNIT'
+      [Unit]
+      Description=gproxy service
+      After=network.target
+
+      [Service]
+      ExecStart=/opt/gproxy/gproxy
+      Restart=on-failure
+      User=root
+      WorkingDirectory=/opt/gproxy
+
+      [Install]
+      WantedBy=multi-user.target
+      UNIT
+
+      systemctl daemon-reload
+      systemctl enable gproxy
+
+      systemctl enable amazon-ssm-agent || true
+      systemctl restart amazon-ssm-agent || true
+    EOF
 
   tags = {
     Name        = "gproxy"

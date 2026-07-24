@@ -149,13 +149,17 @@ func (cfg *AWSConfig) register() {
 }
 
 func (cfg *AWSConfig) Register(ctx context.Context) {
-	ch := time.Tick(time.Minute)
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
 
 	cfg.register()
-	select {
-	case <-ch:
-		cfg.register()
-	case <-ctx.Done():
-		return
+
+	for {
+		select {
+		case <-ticker.C:
+			cfg.register()
+		case <-ctx.Done():
+			return
+		}
 	}
 }

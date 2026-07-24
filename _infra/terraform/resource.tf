@@ -205,35 +205,38 @@ resource "aws_instance" "app" {
   iam_instance_profile = aws_iam_instance_profile.gproxy.name
 
   user_data = <<-EOF
-      #!/bin/bash
-      set -eux
+        #!/bin/bash
+        set -eux
 
-      mkdir -p /opt/gproxy
+        apt-get update -y
+        apt-get install -y unzip curl
 
-      curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
-      unzip -q /tmp/awscliv2.zip -d /tmp
-      /tmp/aws/install
+        mkdir -p /opt/gproxy
 
-      cat > /etc/systemd/system/gproxy.service <<'UNIT'
-      [Unit]
-      Description=gproxy service
-      After=network.target
+        curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+        unzip -q -o /tmp/awscliv2.zip -d /tmp
+        /tmp/aws/install
 
-      [Service]
-      ExecStart=/opt/gproxy/gproxy
-      Restart=on-failure
-      User=root
-      WorkingDirectory=/opt/gproxy
+        cat > /etc/systemd/system/gproxy.service <<'UNIT'
+        [Unit]
+        Description=gproxy service
+        After=network.target
 
-      [Install]
-      WantedBy=multi-user.target
-      UNIT
+        [Service]
+        ExecStart=/opt/gproxy/gproxy
+        Restart=on-failure
+        User=root
+        WorkingDirectory=/opt/gproxy
 
-      systemctl daemon-reload
-      systemctl enable gproxy
+        [Install]
+        WantedBy=multi-user.target
+        UNIT
 
-      systemctl enable amazon-ssm-agent || true
-      systemctl restart amazon-ssm-agent || true
+        systemctl daemon-reload
+        systemctl enable gproxy
+
+        systemctl enable amazon-ssm-agent || true
+        systemctl restart amazon-ssm-agent || true
     EOF
 
   tags = {
@@ -270,9 +273,9 @@ data "aws_route53_zone" "zone" {
 
 resource "aws_route53_record" "wildcard" {
   zone_id = data.aws_route53_zone.zone.zone_id
-  name = "*.grubzo.food"
-  type = "A"
-  ttl = 60
+  name    = "*.grubzo.food"
+  type    = "A"
+  ttl     = 60
 
   records = [
     aws_eip.app.public_ip

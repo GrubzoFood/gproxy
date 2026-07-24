@@ -19,7 +19,7 @@ const (
 )
 
 func run(logger *zap.Logger) {
-	handler, cancel := proxy.Init(logger, true)
+	handler, cancel := proxy.Init(logger, false)
 
 	server := &http.Server{
 		Addr:    ":443",

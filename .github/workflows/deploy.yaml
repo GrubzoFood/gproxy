@@ -52,11 +52,11 @@ jobs:
             --instance-ids "${{ steps.tf.outputs.instance_id }}" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "sudo aws s3 cp s3://gproxy-tfstate/artifacts/gproxy /opt/gproxy/gproxy.new",
-              "sudo chmod +x /opt/gproxy/gproxy.new",
-              "sudo mv /opt/gproxy/gproxy.new /opt/gproxy/gproxy",
-              "sudo systemctl restart gproxy",
-              "sudo systemctl status gproxy --no-pager"
+              "aws s3 cp s3://gproxy-tfstate/artifacts/gproxy /opt/gproxy/gproxy.new",
+              "chmod +x /opt/gproxy/gproxy.new",
+              "mv /opt/gproxy/gproxy.new /opt/gproxy/gproxy",
+              "systemctl restart gproxy",
+              "systemctl status gproxy --no-pager"
             ]' \
             --query "Command.CommandId" \
             --output text)

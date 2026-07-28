@@ -203,7 +203,7 @@ resource "aws_instance" "app" {
   ]
 
   iam_instance_profile = aws_iam_instance_profile.gproxy.name
-
+  user_data_replace_on_change = true
   user_data = <<-EOF
         #!/bin/bash
         set -eux

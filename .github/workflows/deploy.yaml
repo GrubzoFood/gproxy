@@ -1,13 +1,14 @@
 name: Deploy
 on:
   push:
-    branches: ["release/1.0"]
+    branches: ["release/*"]
+  workflow_dispatch: {}
       
 permissions:
   contents: read
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         shell: bash

@@ -61,11 +61,11 @@ apply: init
 apply-auto: init
 	terraform apply --auto-approve
 
-destroy:
+destroy: init
 	terraform destroy
 	$(MAKE) destroy-backend
 
-destroy-auto:
+destroy-auto: init
 	terraform destroy --auto-approve
 	$(MAKE) destroy-backend
 

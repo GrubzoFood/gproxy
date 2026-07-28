@@ -1,8 +1,8 @@
 name: Deploy
 on:
   push:
-    branches:
-      - main
+    branches: ["release/1.0"]
+      
 permissions:
   contents: read
 jobs:

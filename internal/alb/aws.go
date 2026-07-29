@@ -3,10 +3,10 @@ package alb
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	cfg "gproxy/internal/config"
@@ -91,39 +91,71 @@ func (cfg *AWSConfig) register() {
 		}
 	}
 
+	type MetaInfo struct {
+		Tenants     []string `json:"tenants"`
+		Instance    string   `json:"instance"`
+		Environment string   `json:"environment"`
+		Version     string   `json:"version"`
+		Revison     string   `json:"revision"`
+	}
+
 	getSubDomains := func(dns, subdomain string) ([]string, error) {
+		envs := []string{"stage", "qa", ""}
 
-		host := fmt.Sprintf("%s.grubzo.food", subdomain)
-		transport := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				ServerName: host,
-			},
-		}
-		client := &http.Client{
-			Transport: transport,
-		}
-		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:443/api/v1/tenants", dns), nil)
-		if err != nil {
-			return nil, err
+		var lastErr error
+
+		for _, env := range envs {
+			var host string
+			if env == "" {
+				host = fmt.Sprintf("%s.grubzo.food", subdomain)
+			} else {
+				host = fmt.Sprintf("%s.%s.grubzo.food", subdomain, env)
+			}
+
+			transport := &http.Transport{
+				TLSClientConfig: &tls.Config{
+					ServerName: host,
+				},
+			}
+			client := &http.Client{
+				Transport: transport,
+			}
+
+			req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:443/api/meta/info", dns), nil)
+			if err != nil {
+				return nil, err
+			}
+			req.Host = host
+
+			res, err := client.Do(req)
+			if err != nil {
+				lastErr = fmt.Errorf("host %s: %w", host, err)
+				continue
+			}
+
+			if res.StatusCode != http.StatusOK {
+				res.Body.Close()
+				lastErr = fmt.Errorf("host %s: unexpected status: %s", host, res.Status)
+				continue
+			}
+
+			body, err := io.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				lastErr = fmt.Errorf("host %s: %w", host, err)
+				continue
+			}
+
+			var meta MetaInfo
+			if err := json.Unmarshal(body, &meta); err != nil {
+				lastErr = fmt.Errorf("host %s: failed to unmarshal response: %w", host, err)
+				continue
+			}
+
+			return meta.Tenants, nil
 		}
 
-		req.Host = host
-		res, err := client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("unexpected status: %s", res.Status)
-		}
-
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		tenants := strings.Split(strings.TrimSpace(string(body)), ",")
-		return tenants, nil
+		return nil, fmt.Errorf("all env candidates failed for subdomain %q against dns %q, last error: %w", subdomain, dns, lastErr)
 	}
 
 	for _, v := range albMap {
@@ -141,7 +173,7 @@ func (cfg *AWSConfig) register() {
 			for _, subDomain := range subDomains {
 				cfg.logger.Info(fmt.Sprintf("registred subdomain: %s in instance: %s\n", subDomain, v.cluster))
 				if err := cfg.rt.RegisterRoute(subDomain, fmt.Sprintf("http://%s:%d", v.dns, 443)); err != nil {
-					cfg.logger.Error(fmt.Sprintf("failed registering subdomain: %s in instance: %s, with error: %s ", subDomain, v.cluster), zap.Error(err))
+					cfg.logger.Error(fmt.Sprintf("failed registering subdomain: %s in instance: %s, with error: %s ", subDomain, v.cluster, zap.Error(err)))
 				}
 			}
 		}

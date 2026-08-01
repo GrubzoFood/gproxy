@@ -19,7 +19,13 @@ import (
 var certFS embed.FS
 
 func run(logger *zap.Logger) {
-	handler, cancel := proxy.Init(logger, false)
+
+	isDev := os.Getenv("GPROXY_DEV") == "true"
+	if isDev {
+		logger.Info("gproxy is running in dev mode")
+	}
+
+	handler, cancel := proxy.Init(logger, isDev)
 
 	certPEM, err := certFS.ReadFile("certs/_wildcard.grubzo.food+5.pem")
 	if err != nil {

@@ -73,7 +73,10 @@ func (cfg *AWSConfig) register() {
 			dns: *v.DNSName,
 		}
 	}
-
+	if len(arns) == 0 {
+		cfg.logger.Warn("no active AWS ALBs discovered")
+		return
+	}
 	describeTags, err := elbv2Client.DescribeTags(context.Background(), &elbv2.DescribeTagsInput{ResourceArns: arns})
 	if err != nil {
 		cfg.logger.Error("failed describing the alb tags", zap.Error(err))
@@ -181,7 +184,7 @@ func (cfg *AWSConfig) register() {
 }
 
 func (cfg *AWSConfig) Register(ctx context.Context) {
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	cfg.register()
